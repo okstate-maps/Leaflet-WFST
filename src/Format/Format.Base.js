@@ -23,7 +23,7 @@ L.Format.Base = L.Class.extend({
     if (options.crs) {
       var crs = options.crs;
       this.options.coordsToLatLng = function (coords) {
-        var point = L.point(coords[0], coords[1]);
+        var point = options.arcgis ? L.point(coords[1], coords[0]) : L.point(coords[0], coords[1]);
         var ll = crs.projection.unproject(point);
         if (coords[2]) {
           ll.alt = coords[2];

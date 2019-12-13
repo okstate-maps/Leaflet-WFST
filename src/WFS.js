@@ -42,7 +42,8 @@ L.WFS = L.FeatureGroup.extend({
 
     this.readFormat = readFormat || new L.Format.GML({
       crs: this.options.crs,
-      geometryField: this.options.geometryField
+      geometryField: this.options.geometryField,
+      arcgis: this.options.arcgis
     });
 
     this.options.typeNSName = this.namespaceName(this.options.typeName);
@@ -67,45 +68,86 @@ L.WFS = L.FeatureGroup.extend({
   },
 
   describeFeatureType: function (successCallback, errorCallback) {
-    var requestData = L.XmlUtil.createElementNS('wfs:DescribeFeatureType', {
-      service: 'WFS',
-      version: this.options.version
-    });
-    requestData.appendChild(L.XmlUtil.createElementNS('TypeName', {}, {
-      value: this.options.typeNSName
-    }));
-
     var that = this;
-    L.Util.request({
-      url: this.options.url,
-      data: L.XmlUtil.serializeXmlDocumentString(requestData),
-      headers: this.options.headers || {},
-      success: function (data) {
-        // If some exception occur, WFS-service can response successfully, but with ExceptionReport,
-        // and such situation must be handled.
-        var exceptionReport = L.XmlUtil.parseOwsExceptionReport(data);
-        if (exceptionReport) {
-          if (typeof (errorCallback) === 'function') {
-            errorCallback(exceptionReport.message);
+    var url;
+
+    if (this.options.arcgis === true){
+      url = this.options.url + "?SERVICE=WFS&REQUEST=DescribeFeatureType&VERSION=1.1.0&typeName=" + this.options.typeNS + ":" + this.options.typeName
+      L.Util.request({
+        url: url,
+        method: "GET",
+        //data: L.XmlUtil.serializeXmlDocumentString(requestData),
+        headers: this.options.headers || {},
+        withCredentials: this.options.withCredentials,
+        success: function (data) {
+          // If some exception occur, WFS-service can response successfully, but with ExceptionReport,
+          // and such situation must be handled.
+          var exceptionReport = L.XmlUtil.parseOwsExceptionReport(data);
+          if (exceptionReport) {
+            if (typeof (errorCallback) === 'function') {
+              errorCallback(exceptionReport.message);
+            }
+
+            return;
           }
 
-          return;
+          var xmldoc = L.XmlUtil.parseXml(data);
+          var featureInfo = xmldoc.documentElement;
+          that.readFormat.setFeatureDescription(featureInfo);
+          that.options.namespaceUri = featureInfo.attributes.targetNamespace.value;
+          if (typeof (successCallback) === 'function') {
+            successCallback();
+          }
+        },
+        error: function (errorMessage) {
+          if (typeof (errorCallback) === 'function') {
+            errorCallback(errorMessage);
+          }
         }
+      });
+    }
 
-        var xmldoc = L.XmlUtil.parseXml(data);
-        var featureInfo = xmldoc.documentElement;
-        that.readFormat.setFeatureDescription(featureInfo);
-        that.options.namespaceUri = featureInfo.attributes.targetNamespace.value;
-        if (typeof (successCallback) === 'function') {
-          successCallback();
+
+    else {
+      var requestData = L.XmlUtil.createElementNS('wfs:DescribeFeatureType', {
+        service: 'WFS',
+        version: this.options.version
+      });
+      requestData.appendChild(L.XmlUtil.createElementNS('TypeName', {}, {
+        value: this.options.typeNSName
+      }));
+
+      L.Util.request({
+        url: this.options.url,
+        data: L.XmlUtil.serializeXmlDocumentString(requestData),
+        headers: this.options.headers || {},
+        success: function (data) {
+          // If some exception occur, WFS-service can response successfully, but with ExceptionReport,
+          // and such situation must be handled.
+          var exceptionReport = L.XmlUtil.parseOwsExceptionReport(data);
+          if (exceptionReport) {
+            if (typeof (errorCallback) === 'function') {
+              errorCallback(exceptionReport.message);
+            }
+
+            return;
+          }
+
+          var xmldoc = L.XmlUtil.parseXml(data);
+          var featureInfo = xmldoc.documentElement;
+          that.readFormat.setFeatureDescription(featureInfo);
+          that.options.namespaceUri = featureInfo.attributes.targetNamespace.value;
+          if (typeof (successCallback) === 'function') {
+            successCallback();
+          }
+        },
+        error: function (errorMessage) {
+          if (typeof (errorCallback) === 'function') {
+            errorCallback(errorMessage);
+          }
         }
-      },
-      error: function (errorMessage) {
-        if (typeof (errorCallback) === 'function') {
-          errorCallback(errorMessage);
-        }
-      }
-    });
+      }); 
+    }
   },
 
   getFeature: function (filter) {
