@@ -72,7 +72,7 @@ L.WFS = L.FeatureGroup.extend({
     var url;
 
     if (this.options.arcgis === true){
-      url = this.options.url + "?SERVICE=WFS&REQUEST=DescribeFeatureType&VERSION=1.1.0&typeName=" + this.options.typeNS + ":" + this.options.typeName
+      url = this.options.url + "?SERVICE=WFS&REQUEST=DescribeFeatureType&VERSION=1.1.0&typeName=" + this.options.typeNS + ":" + this.options.typeName;
       L.Util.request({
         url: url,
         method: "GET",
